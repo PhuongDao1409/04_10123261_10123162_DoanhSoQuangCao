@@ -1,0 +1,21 @@
+{
+  "model_name": "RandomForest",
+  "model_version": "1.0.0",
+  "trained_on": "2026-09-24",
+  "scikit_learn": "1.6.1",
+  "metrics": {
+    "Model": "RandomForest",
+    "R2_Train": 0.9946,
+    "R2_Test": 0.9801,
+    "MAE_Test": 0.6319,
+    "RMSE_Test": 0.7935,
+    "Train_vs_Test_Diff": 0.0146
+  },
+  "features": [
+    "TV",
+    "Radio",
+    "Newspaper"
+  ],
+  "n_train": 160,
+  "n_test": 40
+}

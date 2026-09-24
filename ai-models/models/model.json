@@ -1,0 +1,45 @@
+{
+  "model": "LinearRegression",
+  "target": "Sales (nghìn sản phẩm)",
+  "intercept": 2.979067338122629,
+  "features": [
+    {
+      "key": "TV",
+      "coef": 0.044729517468716326,
+      "min": 0.7,
+      "max": 296.4,
+      "median": 149.75,
+      "unit": "nghìn USD"
+    },
+    {
+      "key": "Radio",
+      "coef": 0.18919505423437658,
+      "min": 0.0,
+      "max": 49.6,
+      "median": 22.9,
+      "unit": "nghìn USD"
+    },
+    {
+      "key": "Newspaper",
+      "coef": 0.0027611143413672086,
+      "min": 0.3,
+      "max": 114.0,
+      "median": 25.75,
+      "unit": "nghìn USD"
+    }
+  ],
+  "metrics": {
+    "r2_test": 0.8994,
+    "mae_test": 1.4608,
+    "rmse_test": 1.7816,
+    "n_train": 160,
+    "n_test": 40
+  },
+  "dataset": {
+    "name": "Advertising Dataset (Kaggle / ISLR)",
+    "rows_used": 200,
+    "note": "Chi phí quảng cáo trên TV, Radio, Báo và Doanh số bán hàng (Sales)."
+  },
+  "trained_on": "2026-09-24",
+  "scikit_learn": "1.6.1"
+}

@@ -1,0 +1,32 @@
+{
+  "target": "Sales",
+  "features": [
+    {
+      "key": "TV",
+      "label": "Chi phí quảng cáo TV",
+      "type": "float",
+      "min": 0.7,
+      "max": 296.4,
+      "median": 149.75,
+      "unit": "nghìn USD"
+    },
+    {
+      "key": "Radio",
+      "label": "Chi phí quảng cáo Radio",
+      "type": "float",
+      "min": 0.0,
+      "max": 49.6,
+      "median": 22.9,
+      "unit": "nghìn USD"
+    },
+    {
+      "key": "Newspaper",
+      "label": "Chi phí quảng cáo Newspaper",
+      "type": "float",
+      "min": 0.3,
+      "max": 114.0,
+      "median": 25.75,
+      "unit": "nghìn USD"
+    }
+  ]
+}
