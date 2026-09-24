@@ -1,75 +1,44 @@
 ﻿import os
-import json
 import joblib
 import pandas as pd
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 
-app = FastAPI(title="Advertising Sales AI Service", version="1.0.0")
+app = FastAPI(title="Advertising AI Service - 4 Models", version="2.0.0")
 
-# Biến toàn cục lưu trữ Model & Metadata
-MODEL_PATH = "models/model.joblib"
-METADATA_PATH = "models/metadata.json"
-SCHEMA_PATH = "models/schema.json"
-
-model = None
-metadata = {}
-schema = {}
+models = {}
+MODEL_NAMES = ["linear", "ridge", "random_forest", "xgboost"]
 
 @app.on_event("startup")
-def load_artifacts():
-    global model, metadata, schema
-    if os.path.exists(MODEL_PATH):
-        model = joblib.load(MODEL_PATH)
-        print(f"[AI-SERVICE] Đã nạp thành công model từ {MODEL_PATH}")
-    else:
-        print(f"[AI-SERVICE] CẢNH BÁO: Không tìm thấy {MODEL_PATH}")
-
-    if os.path.exists(METADATA_PATH):
-        with open(METADATA_PATH, "r", encoding="utf-8") as f:
-            metadata = json.load(f)
-
-    if os.path.exists(SCHEMA_PATH):
-        with open(SCHEMA_PATH, "r", encoding="utf-8") as f:
-            schema = json.load(f)
+def load_all_models():
+    for name in MODEL_NAMES:
+        path = f"models/{name}.joblib"
+        if os.path.exists(path):
+            models[name] = joblib.load(path)
+            print(f"[AI-SERVICE] Đã nạp thành công: {path}")
+        else:
+            print(f"[AI-SERVICE] CẢNH BÁO: Thiếu file {path}")
 
 class PredictRequest(BaseModel):
-    TV: float = Field(..., example=230.1)
-    Radio: float = Field(..., example=37.8)
-    Newspaper: float = Field(..., example=69.2)
+    TV: float = Field(..., example=150.0)
+    Radio: float = Field(..., example=25.0)
+    Newspaper: float = Field(..., example=20.0)
 
 @app.get("/health")
 def health():
-    return {
-        "status": "healthy",
-        "service": "ai-service",
-        "model_loaded": model is not None,
-        "model_name": metadata.get("model_name", "Unknown")
-    }
+    return {"status": "healthy", "loaded_models": list(models.keys())}
 
-@app.get("/model-info")
-def model_info():
-    return {
-        "metadata": metadata,
-        "schema": schema
-    }
-
-@app.post("/predict")
-def predict(data: PredictRequest):
-    if model is None:
-        raise HTTPException(status_code=500, detail="Mô hình chưa được nạp!")
+@app.post("/predict/{model_name}")
+def predict(model_name: str, data: PredictRequest):
+    if model_name not in models:
+        raise HTTPException(status_code=404, detail=f"Model '{model_name}' không tồn tại. Chọn trong: {MODEL_NAMES}")
     
-    input_df = pd.DataFrame([{
-        "TV": data.TV,
-        "Radio": data.Radio,
-        "Newspaper": data.Newspaper
-    }])
-    
+    model = models[model_name]
+    input_df = pd.DataFrame([data.dict()])
     prediction = float(model.predict(input_df)[0])
     
     return {
+        "model": model_name,
         "prediction": round(prediction, 2),
-        "unit": "nghìn sản phẩm",
-        "model_version": metadata.get("model_version", "1.0.0"),
-        "model_name": metadata.get("model_name", "Best Model")
+        "unit": "nghìn sản phẩm"
     }

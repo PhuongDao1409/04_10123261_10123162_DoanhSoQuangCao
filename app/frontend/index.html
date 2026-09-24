@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Dự đoán Doanh số Quảng cáo</title>
+  <title>Dự đoán Doanh số - 4 Mô hình Học máy</title>
   <style>
     :root { --primary: #2563eb; --bg: #f8fafc; --card: #ffffff; --text: #1e293b; --border: #e2e8f0; }
     body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 20px; }
@@ -15,8 +15,8 @@
     .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
     .field { margin-bottom: 16px; }
     label { display: block; font-weight: 600; margin-bottom: 6px; font-size: 14px; }
-    input { width: 100%; box-sizing: border-box; padding: 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 15px; }
-    input:focus { outline: 2px solid var(--primary); }
+    input, select { width: 100%; box-sizing: border-box; padding: 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 15px; background: white; }
+    input:focus, select:focus { outline: 2px solid var(--primary); }
     .hint { font-size: 12px; color: #64748b; margin-top: 4px; }
     .btn { background: var(--primary); color: white; border: none; padding: 10px 20px; border-radius: 6px; font-weight: 600; cursor: pointer; width: 100%; font-size: 15px; }
     .btn:hover { background: #1d4ed8; }
@@ -28,28 +28,34 @@
 <body>
   <div class="wrap">
     <header>
-      <h1>📊 Hệ thống Dự đoán Doanh số từ Chi phí Quảng cáo</h1>
-      <p style="margin:0; color:#64748b;">Học phần: Học máy cơ bản · Đóng gói hoàn chỉnh bằng Docker</p>
+      <h1>📊 Dự đoán Doanh số Quảng cáo (4 Mô hình Học máy)</h1>
+      <p style="margin:0; color:#64748b;">Học phần: Học máy cơ bản · Chọn mô hình so sánh trực quan</p>
     </header>
 
     <main class="layout">
       <section class="card">
-        <h2>Nhập ngân sách (nghìn USD)</h2>
+        <h2>Thông số đầu vào</h2>
         <form id="ad-form">
           <div class="field">
-            <label for="tv">Ngân sách Quảng cáo TV</label>
+            <label for="model-select">Chọn Mô hình (Model)</label>
+            <select id="model-select">
+              <option value="xgboost">XGBoost Regressor (Tốt nhất - R²: 0.9789)</option>
+              <option value="random_forest">Random Forest Regressor (R²: 0.9725)</option>
+              <option value="linear">Linear Regression (Baseline - R²: 0.8994)</option>
+              <option value="ridge">Ridge Regression (R²: 0.8991)</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="tv">Ngân sách TV (nghìn USD)</label>
             <input type="number" id="tv" step="0.1" value="150.0" required>
-            <div class="hint">Khoảng dữ liệu huấn luyện: 0.7 – 296.4 nghìn USD</div>
           </div>
           <div class="field">
-            <label for="radio">Ngân sách Quảng cáo Radio</label>
+            <label for="radio">Ngân sách Radio (nghìn USD)</label>
             <input type="number" id="radio" step="0.1" value="25.0" required>
-            <div class="hint">Khoảng dữ liệu huấn luyện: 0.0 – 49.6 nghìn USD</div>
           </div>
           <div class="field">
-            <label for="newspaper">Ngân sách Quảng cáo Báo (Newspaper)</label>
+            <label for="newspaper">Ngân sách Báo (Newspaper)</label>
             <input type="number" id="newspaper" step="0.1" value="20.0" required>
-            <div class="hint">Khoảng dữ liệu huấn luyện: 0.3 – 114.0 nghìn USD</div>
           </div>
           <button type="submit" class="btn" id="btn-submit">Dự đoán Doanh số</button>
         </form>
@@ -59,12 +65,12 @@
         <h2>Kết quả Dự đoán</h2>
         <div>Doanh số ước tính:</div>
         <div class="price" id="res-sales">—</div>
-        <div id="res-desc" style="color: #64748b; font-size: 14px;">Nhập số liệu và nhấn dự đoán để xem kết quả.</div>
+        <div id="res-desc" style="color: #64748b; font-size: 14px;">Chọn model và nhấn dự đoán.</div>
         
-        <div class="log-box" id="res-log">Request ID: None | Status: Ready</div>
+        <div class="log-box" id="res-log">Status: Ready</div>
 
         <div class="meta" id="model-meta">
-          Đang kết nối tới Backend Gateway...
+          Hệ thống chạy 4 model song song trên Docker.
         </div>
       </aside>
     </main>
@@ -75,26 +81,13 @@
     const resSales = document.getElementById("res-sales");
     const resDesc = document.getElementById("res-desc");
     const resLog = document.getElementById("res-log");
-    const modelMeta = document.getElementById("model-meta");
-
-    // Lấy thông tin model khi mở trang
-    fetch("/api/model-info")
-      .then(res => res.json())
-      .then(data => {
-        const m = data.metadata;
-        modelMeta.innerHTML = `<b>Mô hình:</b> ${m.model_name} (v${m.model_version})<br>
-                               <b>Đánh giá trên tập kiểm tra:</b> R² = ${m.metrics.r2_test} | MAE = ${m.metrics.mae_test} | RMSE = ${m.metrics.rmse_test}<br>
-                               <b>Tập dữ liệu:</b> Advertising Dataset (${m.n_train} mẫu train, ${m.n_test} mẫu test)`;
-      })
-      .catch(() => {
-        modelMeta.innerHTML = "<b>Backend:</b> Đang kết nối trực tiếp qua Docker network...";
-      });
 
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
       const btn = document.getElementById("btn-submit");
+      const modelName = document.getElementById("model-select").value;
       btn.disabled = true;
-      btn.textContent = "Đang xử lý...";
+      btn.textContent = "Đang tính toán...";
 
       const payload = {
         TV: parseFloat(document.getElementById("tv").value),
@@ -103,7 +96,7 @@
       };
 
       try {
-        const res = await fetch("/api/predict", {
+        const res = await fetch(`http://localhost:8000/api/predict/${modelName}`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload)
@@ -112,17 +105,17 @@
         const data = await res.json();
         if (res.ok) {
           resSales.textContent = `${data.prediction} ${data.unit}`;
-          resDesc.textContent = `Dự đoán thành công bởi mô hình ${data.model_name}`;
-          resLog.textContent = `req=${data.request_id} | Status: 200 OK | Model: ${data.model_name}`;
+          resDesc.textContent = `Dự đoán thành công bằng mô hình: ${data.model.toUpperCase()}`;
+          resLog.textContent = `Model: ${data.model} | Status: 200 OK`;
         } else {
           resSales.textContent = "Lỗi";
           resDesc.textContent = data.detail || "Có lỗi xảy ra";
-          resLog.textContent = `Status: ${res.status} | Error: ${JSON.stringify(data)}`;
+          resLog.textContent = `Status: ${res.status}`;
         }
       } catch (err) {
         resSales.textContent = "Mất kết nối";
-        resDesc.textContent = "Không thể gọi tới Backend API";
-        resLog.textContent = "Lỗi mạng hoặc Backend chưa chạy";
+        resDesc.textContent = "Không gọi được API";
+        resLog.textContent = "Lỗi kết nối";
       } finally {
         btn.disabled = false;
         btn.textContent = "Dự đoán Doanh số";
