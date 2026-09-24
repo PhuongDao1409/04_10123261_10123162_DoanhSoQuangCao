@@ -1,0 +1,133 @@
+﻿<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Dự đoán Doanh số Quảng cáo</title>
+  <style>
+    :root { --primary: #2563eb; --bg: #f8fafc; --card: #ffffff; --text: #1e293b; --border: #e2e8f0; }
+    body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 20px; }
+    .wrap { max-width: 900px; margin: 0 auto; }
+    header { margin-bottom: 24px; border-bottom: 1px solid var(--border); padding-bottom: 16px; }
+    h1 { margin: 0 0 8px 0; color: #0f172a; font-size: 24px; }
+    .layout { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+    @media (max-width: 768px) { .layout { grid-template-columns: 1fr; } }
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+    .field { margin-bottom: 16px; }
+    label { display: block; font-weight: 600; margin-bottom: 6px; font-size: 14px; }
+    input { width: 100%; box-sizing: border-box; padding: 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 15px; }
+    input:focus { outline: 2px solid var(--primary); }
+    .hint { font-size: 12px; color: #64748b; margin-top: 4px; }
+    .btn { background: var(--primary); color: white; border: none; padding: 10px 20px; border-radius: 6px; font-weight: 600; cursor: pointer; width: 100%; font-size: 15px; }
+    .btn:hover { background: #1d4ed8; }
+    .price { font-size: 36px; font-weight: bold; color: #16a34a; margin: 10px 0; }
+    .meta { font-size: 13px; color: #64748b; line-height: 1.5; margin-top: 16px; border-top: 1px solid var(--border); padding-top: 12px; }
+    .log-box { background: #0f172a; color: #38bdf8; font-family: monospace; font-size: 12px; padding: 10px; border-radius: 6px; margin-top: 12px; word-break: break-all; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>📊 Hệ thống Dự đoán Doanh số từ Chi phí Quảng cáo</h1>
+      <p style="margin:0; color:#64748b;">Học phần: Học máy cơ bản · Đóng gói hoàn chỉnh bằng Docker</p>
+    </header>
+
+    <main class="layout">
+      <section class="card">
+        <h2>Nhập ngân sách (nghìn USD)</h2>
+        <form id="ad-form">
+          <div class="field">
+            <label for="tv">Ngân sách Quảng cáo TV</label>
+            <input type="number" id="tv" step="0.1" value="150.0" required>
+            <div class="hint">Khoảng dữ liệu huấn luyện: 0.7 – 296.4 nghìn USD</div>
+          </div>
+          <div class="field">
+            <label for="radio">Ngân sách Quảng cáo Radio</label>
+            <input type="number" id="radio" step="0.1" value="25.0" required>
+            <div class="hint">Khoảng dữ liệu huấn luyện: 0.0 – 49.6 nghìn USD</div>
+          </div>
+          <div class="field">
+            <label for="newspaper">Ngân sách Quảng cáo Báo (Newspaper)</label>
+            <input type="number" id="newspaper" step="0.1" value="20.0" required>
+            <div class="hint">Khoảng dữ liệu huấn luyện: 0.3 – 114.0 nghìn USD</div>
+          </div>
+          <button type="submit" class="btn" id="btn-submit">Dự đoán Doanh số</button>
+        </form>
+      </section>
+
+      <aside class="card">
+        <h2>Kết quả Dự đoán</h2>
+        <div>Doanh số ước tính:</div>
+        <div class="price" id="res-sales">—</div>
+        <div id="res-desc" style="color: #64748b; font-size: 14px;">Nhập số liệu và nhấn dự đoán để xem kết quả.</div>
+        
+        <div class="log-box" id="res-log">Request ID: None | Status: Ready</div>
+
+        <div class="meta" id="model-meta">
+          Đang kết nối tới Backend Gateway...
+        </div>
+      </aside>
+    </main>
+  </div>
+
+  <script>
+    const form = document.getElementById("ad-form");
+    const resSales = document.getElementById("res-sales");
+    const resDesc = document.getElementById("res-desc");
+    const resLog = document.getElementById("res-log");
+    const modelMeta = document.getElementById("model-meta");
+
+    // Lấy thông tin model khi mở trang
+    fetch("/api/model-info")
+      .then(res => res.json())
+      .then(data => {
+        const m = data.metadata;
+        modelMeta.innerHTML = `<b>Mô hình:</b> ${m.model_name} (v${m.model_version})<br>
+                               <b>Đánh giá trên tập kiểm tra:</b> R² = ${m.metrics.r2_test} | MAE = ${m.metrics.mae_test} | RMSE = ${m.metrics.rmse_test}<br>
+                               <b>Tập dữ liệu:</b> Advertising Dataset (${m.n_train} mẫu train, ${m.n_test} mẫu test)`;
+      })
+      .catch(() => {
+        modelMeta.innerHTML = "<b>Backend:</b> Đang kết nối trực tiếp qua Docker network...";
+      });
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById("btn-submit");
+      btn.disabled = true;
+      btn.textContent = "Đang xử lý...";
+
+      const payload = {
+        TV: parseFloat(document.getElementById("tv").value),
+        Radio: parseFloat(document.getElementById("radio").value),
+        Newspaper: parseFloat(document.getElementById("newspaper").value)
+      };
+
+      try {
+        const res = await fetch("/api/predict", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+        
+        const data = await res.json();
+        if (res.ok) {
+          resSales.textContent = `${data.prediction} ${data.unit}`;
+          resDesc.textContent = `Dự đoán thành công bởi mô hình ${data.model_name}`;
+          resLog.textContent = `req=${data.request_id} | Status: 200 OK | Model: ${data.model_name}`;
+        } else {
+          resSales.textContent = "Lỗi";
+          resDesc.textContent = data.detail || "Có lỗi xảy ra";
+          resLog.textContent = `Status: ${res.status} | Error: ${JSON.stringify(data)}`;
+        }
+      } catch (err) {
+        resSales.textContent = "Mất kết nối";
+        resDesc.textContent = "Không thể gọi tới Backend API";
+        resLog.textContent = "Lỗi mạng hoặc Backend chưa chạy";
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "Dự đoán Doanh số";
+      }
+    });
+  </script>
+</body>
+</html>
