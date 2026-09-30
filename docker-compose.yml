@@ -24,6 +24,7 @@ services:
       - "${BACKEND_PORT:-8000}:8000"
     environment:
       - AI_SERVICE_URL=${AI_SERVICE_URL:-http://ai-service:8001}
+      - MONGODB_URI=${MONGODB_URI}
     depends_on:
       ai-service:
         condition: service_healthy
